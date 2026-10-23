@@ -1,0 +1,45 @@
+// use prisma-8
+
+model User {
+  id           String   @id @onCreate(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+
+  groups         GroupMember[]
+  debtsOwed      Transaction[] @relation("TransactionFrom")
+  debtsToCollect Transaction[] @relation("TransactionTo")
+}
+
+model Group {
+  id           String        @id @onCreate(uuid())
+  name         String
+  members      GroupMember[]
+  transactions Transaction[]
+}
+
+model GroupMember {
+  groupId String
+  userId  String
+
+  group Group @relation(fields: [groupId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@id([groupId, userId])
+}
+
+model Transaction {
+  id          String   @id  @onCreate(uuid())
+  amount Int     
+  description String?
+  createdAt   DateTime @default(now())
+
+  groupId String
+  group   Group  @relation(fields: [groupId], references: [id])
+
+  fromId  String
+  from    User   @relation("TransactionFrom", fields: [fromId], references: [id])
+
+  toId    String
+  to      User   @relation("TransactionTo", fields: [toId], references: [id])
+}
