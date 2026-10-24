@@ -4,20 +4,37 @@ import apiClient from "./apiClient"
 
 const authContext = createContext()
 
+function getStoredUser() {
+    const storedUser = localStorage.getItem('user')
+
+    if (!storedUser) {
+        return null
+    }
+
+    try {
+        return JSON.parse(storedUser)
+    } catch {
+        localStorage.removeItem('user')
+        return null
+    }
+}
+
 export function AuthProvider({ children }) {
     const [token, setToken] = useState(localStorage.getItem('jwt'))
-    const [user, setUser] = useState(localStorage.getItem('user'))
+    const [user, setUser] = useState(getStoredUser)
     const navigate = useNavigate()
 
     async function login(email, password) {
         const response = await apiClient.post("/auth/login", { email, password },
             { headers: { 'Content-Type': 'application/json'} })
         
+        const nextUser = response.data.user
+
         setToken(response.data.token)
-        setUser(JSON.stringify(response.data.user))
+        setUser(nextUser)
 
         localStorage.setItem("jwt", response.data.token)
-        localStorage.setItem("user", JSON.stringify(response.data.user))
+        localStorage.setItem("user", JSON.stringify(nextUser))
 
         navigate("/")
     }
@@ -26,10 +43,13 @@ export function AuthProvider({ children }) {
         const response = await apiClient.post("/auth/signup", userData,
             { headers: { 'Content-Type': 'application/json'} })
 
+        const nextUser = response.data.user
+
         setToken(response.data.token)
-        setUser(JSON.stringify(response.data.user))
+        setUser(nextUser)
+
         localStorage.setItem("jwt", response.data.token)
-        localStorage.setItem("user", JSON.stringify(response.data.user))
+        localStorage.setItem("user", JSON.stringify(nextUser))
         navigate("/")
         return response.data
     }

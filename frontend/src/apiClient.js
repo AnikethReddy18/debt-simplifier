@@ -2,4 +2,14 @@ import axios from "axios";
 
 const baseURL = import.meta.env.VITE_API_URL || "http://localhost:3000"
 
-export default axios.create({ baseURL })
+const apiClient = axios.create({ baseURL })
+
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('jwt')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+export default apiClient

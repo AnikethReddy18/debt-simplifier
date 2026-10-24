@@ -6,6 +6,7 @@ import App from './App.jsx'
 import Login from './pages/Login.jsx'
 import PrivateRoute from './PrivateRoute.jsx'
 import Signup from './pages/Signup.jsx'
+import Group from './pages/Group.jsx'
 import './index.css'
 
 createRoot(document.getElementById('root')).render(
@@ -19,6 +20,7 @@ createRoot(document.getElementById('root')).render(
 
           <Route element={<PrivateRoute />}>
               <Route path="/" element={<App />} />
+              <Route path="/groups/:groupId" element={<Group />} />
           </Route>
 
         </Routes>
