@@ -1,4 +1,4 @@
-import { db } from "./src/prisma/db.js";
+import { db } from "./src/prisma/db.ts";
 
 const User = db.orm.public.User;
 const Group = db.orm.public.Group;

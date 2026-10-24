@@ -2,8 +2,10 @@ import {
   addUserToGroup,
   createGroup,
   deleteGroup,
+  createTransaction,
   getGroupById,
   getMembership,
+  listGroupMembers,
   listGroupTransactions,
 } from "../queries.js";
 
@@ -93,9 +95,94 @@ export async function getGroupTransactions(req, res) {
   }
 }
 
+export async function getGroupMembers(req, res) {
+  try {
+    const group = await getGroupById(req.params.id);
+    if (!group) {
+      return res.status(404).json({ error: "Group not found" });
+    }
+
+    const members = await listGroupMembers(req.params.id);
+    return res.json(members);
+  } catch (error) {
+    console.error("Unable to fetch group members:", error);
+    return res.status(500).json({
+      error: "Unable to fetch group members",
+    });
+  }
+}
+
+export async function addGroupTransaction(req, res) {
+  const groupId = req.params.id;
+  const { amount, description, toId } = req.body ?? {};
+  const requesterId = req.user?.sub;
+  const fromId = requesterId;
+
+  if (!Number.isInteger(amount) || amount <= 0) {
+    return res.status(400).json({
+      error: "amount must be a positive integer",
+    });
+  }
+
+  if (!requesterId || !toId) {
+    return res.status(400).json({
+      error: "toId is required",
+    });
+  }
+
+  if (description !== undefined &&
+      description !== null &&
+      typeof description !== "string") {
+    return res.status(400).json({
+      error: "description must be a string",
+    });
+  }
+
+  try {
+    const group = await getGroupById(groupId);
+    if (!group) {
+      return res.status(404).json({ error: "Group not found" });
+    }
+
+    const [requesterMembership, toMembership] = await Promise.all([
+      getMembership(requesterId, groupId),
+      getMembership(toId, groupId),
+    ]);
+
+    if (!requesterMembership) {
+      return res.status(403).json({
+        error: "You must be a member of the group",
+      });
+    }
+
+    if (!toMembership) {
+      return res.status(403).json({
+        error: "The recipient must be a member of the group",
+      });
+    }
+
+    const transaction = await createTransaction({
+      amount,
+      description: description?.trim() || null,
+      groupId,
+      fromId,
+      toId,
+    });
+
+    return res.status(201).json(transaction);
+  } catch (error) {
+    console.error("Unable to add group transaction:", error);
+    return res.status(500).json({
+      error: "Unable to add group transaction",
+    });
+  }
+}
+
 export default {
   createGroupController,
   addMemberToGroup,
   removeGroup,
+  getGroupMembers,
+  addGroupTransaction,
   getGroupTransactions,
 };
