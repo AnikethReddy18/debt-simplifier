@@ -134,9 +134,8 @@ export async function getGroupMembers(req, res) {
 
 export async function addPendingTransaction(req, res) {
   const groupId = req.params.id;
-  const { amount, description, toId } = req.body ?? {};
-  const requesterId = req.user?.sub;
-  const fromId = requesterId;
+  const { amount, description, fromId } = req.body ?? {};
+  const recipientId = req.user?.sub;
 
   if (!Number.isInteger(amount) || amount <= 0) {
     return res.status(400).json({
@@ -144,9 +143,9 @@ export async function addPendingTransaction(req, res) {
     });
   }
 
-  if (!requesterId || !toId) {
+  if (!recipientId || !fromId) {
     return res.status(400).json({
-      error: "toId is required",
+      error: "fromId is required",
     });
   }
 
@@ -164,20 +163,20 @@ export async function addPendingTransaction(req, res) {
       return res.status(404).json({ error: "Group not found" });
     }
 
-    const [requesterMembership, toMembership] = await Promise.all([
-      getMembership(requesterId, groupId),
-      getMembership(toId, groupId),
+    const [recipientMembership, debtorMembership] = await Promise.all([
+      getMembership(recipientId, groupId),
+      getMembership(fromId, groupId),
     ]);
 
-    if (!requesterMembership) {
+    if (!recipientMembership) {
       return res.status(403).json({
         error: "You must be a member of the group",
       });
     }
 
-    if (!toMembership) {
+    if (!debtorMembership) {
       return res.status(403).json({
-        error: "The recipient must be a member of the group",
+        error: "The other person must be a member of the group",
       });
     }
 
@@ -186,7 +185,7 @@ export async function addPendingTransaction(req, res) {
       description: description?.trim() || null,
       groupId,
       fromId,
-      toId,
+      toId: recipientId,
     });
 
     return res.status(201).json(pendingTransaction);

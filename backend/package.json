@@ -14,6 +14,7 @@
   "license": "ISC",
   "dependencies": {
     "@prisma/orm-postgres": "^8.0.0-rc.20",
+    "@js-temporal/polyfill": "^0.4.4",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^18.0.9",
