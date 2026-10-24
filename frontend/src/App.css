@@ -48,13 +48,26 @@ form label { display: flex; flex-direction: column; color: #48564d; font-size: 1
 .group-id strong { color: #557064; font-weight: 500; }
 .copy-button { border: 1px solid #d9dfd7; border-radius: 6px; padding: 5px 10px; color: #638d25; background: #fff; font-size: 11px; font-weight: 700; }
 .copy-button:hover { border-color: #96c34c; background: #f7fbf1; }
-.members-panel { max-width: 680px; }
+.members-panel { max-width: none; }
 .member-list { display: grid; gap: 5px; }
 .member-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid #eef0ed; }
 .member-row > span:last-child { min-width: 0; }
 .member-row strong, .member-row small { display: block; }
 .member-row small { color: #929b94; font-size: 11px; margin-top: 4px; }
-.group-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.group-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: stretch; }
+.group-columns > .panel { height: 430px; display: flex; flex-direction: column; overflow: hidden; }
+.group-columns > .panel .panel-heading { flex-shrink: 0; }
+.group-columns > .panel .member-list, .group-columns > .panel .transaction-list { flex: 1; min-height: 0; overflow-y: auto; padding-right: 6px; }
+.group-columns > .panel .empty-state { flex-shrink: 0; }
+.panel-search, .transaction-filters select, .amount-filters input { width: 100%; border: 1px solid #d9dfd7; border-radius: 7px; padding: 9px 10px; outline: none; background: #fff; color: #172820; font-size: 11px; }
+.panel-search { flex-shrink: 0; margin-bottom: 8px; }
+.panel-search:focus, .transaction-filters select:focus, .amount-filters input:focus { border-color: #96c34c; box-shadow: 0 0 0 3px rgba(150,195,76,.12); }
+.transaction-filters { display: grid; flex-shrink: 0; gap: 7px; margin-bottom: 5px; }
+.transaction-filters .panel-search { margin-bottom: 0; }
+.amount-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.panel-heading-actions { display: flex; align-items: center; gap: 8px; }
+.filter-toggle { border: 1px solid #d9dfd7; border-radius: 6px; padding: 5px 9px; color: #638d25; background: #fff; font-size: 11px; font-weight: 700; }
+.filter-toggle:hover { border-color: #96c34c; background: #f7fbf1; }
 .member-row > span:nth-child(2) { flex: 1; }
 .pending-transaction-button { border: 1px solid #d9dfd7; border-radius: 6px; padding: 6px 9px; color: #638d25; background: #fff; font-size: 11px; font-weight: 700; white-space: nowrap; }
 .pending-transaction-button:hover { border-color: #96c34c; background: #f7fbf1; }
@@ -65,7 +78,7 @@ form label { display: flex; flex-direction: column; color: #48564d; font-size: 1
 .transaction-row small { color: #929b94; font-size: 11px; margin-top: 4px; }
 .transaction-row b { color: #c76a5d; font-size: 14px; }
 .transaction-dot { width: 9px; height: 9px; border-radius: 50%; background: #e98675; }
-@media (max-width: 850px) { .group-columns { grid-template-columns: 1fr; } }
+@media (max-width: 850px) { .group-columns { grid-template-columns: 1fr; }.group-columns > .panel { height: 360px; } }
 @media (max-width: 560px) { .dashboard-actions { width: 100%; }.dashboard-actions button { flex: 1; padding-left: 8px; padding-right: 8px; }.modal-card { padding: 28px 22px; }.group-page > h1 { font-size: 32px; }.group-id strong { max-width: 100%; word-break: break-all; } }
 
 .bento-auth-page { min-height: 100vh; display: grid; grid-template-columns: minmax(360px, 1fr) minmax(460px, 1.05fr); gap: 14px; padding: 14px; background: #e9eee8; color: #172820; }

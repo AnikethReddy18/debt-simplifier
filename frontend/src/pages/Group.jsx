@@ -1,8 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../AuthProvider.jsx'
 import apiClient from '../apiClient.js'
 import '../App.css'
+
+function formatPendingTransactionTime(createdAt) {
+  if (!createdAt) {
+    return 'Time unavailable'
+  }
+
+  const date = new Date(createdAt)
+  if (Number.isNaN(date.getTime())) {
+    return 'Time unavailable'
+  }
+
+  return date.toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
+}
 
 export default function Group() {
   const { groupId } = useParams()
@@ -17,6 +33,50 @@ export default function Group() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [memberSearch, setMemberSearch] = useState('')
+  const [transactionSearch, setTransactionSearch] = useState('')
+  const [transactionPerson, setTransactionPerson] = useState('')
+  const [minimumAmount, setMinimumAmount] = useState('')
+  const [maximumAmount, setMaximumAmount] = useState('')
+  const [transactionSort, setTransactionSort] = useState('newest')
+  const [showTransactionFilters, setShowTransactionFilters] = useState(false)
+
+  const groupMembers = useMemo(
+    () => members.map((membership) => membership.user || membership),
+    [members],
+  )
+  const filteredMembers = useMemo(() => {
+    const search = memberSearch.trim().toLowerCase()
+    return members.filter((membership) => {
+      const member = membership.user || membership
+      return !search || member.name?.toLowerCase().includes(search)
+    })
+  }, [memberSearch, members])
+  const filteredPendingTransactions = useMemo(() => {
+    const search = transactionSearch.trim().toLowerCase()
+    const minimum = minimumAmount === '' ? null : Number(minimumAmount)
+    const maximum = maximumAmount === '' ? null : Number(maximumAmount)
+    return pendingTransactions
+      .filter((pendingTransaction) => {
+        const payer = groupMembers.find((member) => member.id === pendingTransaction.fromId)
+        const recipient = groupMembers.find((member) => member.id === pendingTransaction.toId)
+        const people = `${payer?.name || ''} ${recipient?.name || ''}`.toLowerCase()
+        const searchableText = `${people} ${pendingTransaction.description || ''}`.toLowerCase()
+        const matchesAmount = (minimum === null || pendingTransaction.amount >= minimum)
+          && (maximum === null || pendingTransaction.amount <= maximum)
+        const matchesPerson = !transactionPerson
+          || pendingTransaction.fromId === transactionPerson
+          || pendingTransaction.toId === transactionPerson
+        return (!search || searchableText.includes(search)) && matchesAmount && matchesPerson
+      })
+      .sort((first, second) => {
+        if (transactionSort === 'amount-high') return second.amount - first.amount
+        if (transactionSort === 'amount-low') return first.amount - second.amount
+        const firstTime = new Date(first.createdAt).getTime()
+        const secondTime = new Date(second.createdAt).getTime()
+        return transactionSort === 'oldest' ? firstTime - secondTime : secondTime - firstTime
+      })
+  }, [groupMembers, maximumAmount, minimumAmount, pendingTransactions, transactionPerson, transactionSearch, transactionSort])
 
   async function copyGroupId() {
     try {
@@ -96,11 +156,12 @@ export default function Group() {
               <section className="panel members-panel">
                 <div className="panel-heading">
                   <div><p className="eyebrow">People</p><h2>Members</h2></div>
-                  <span className="group-count">{members.length}</span>
+                  <span className="group-count">{filteredMembers.length}/{members.length}</span>
                 </div>
-                {!members.length && <p className="empty-state">No members found.</p>}
+                <input className="panel-search" value={memberSearch} onChange={(event) => setMemberSearch(event.target.value)} placeholder="Search members..." aria-label="Search members" />
+                {!filteredMembers.length && <p className="empty-state">{members.length ? 'No matching members.' : 'No members found.'}</p>}
                 <div className="member-list">
-                  {members.map((membership) => {
+                  {filteredMembers.map((membership) => {
                     const member = membership.user || membership
                     const isCurrentUser = member.id === user?.id || membership.userId === user?.id
                     return (
@@ -116,17 +177,43 @@ export default function Group() {
               <section className="panel transactions-panel">
                 <div className="panel-heading">
                   <div><p className="eyebrow">Unsettled</p><h2>Pending transactions</h2></div>
-                  <span className="group-count">{pendingTransactions.length}</span>
+                  <div className="panel-heading-actions">
+                    <span className="group-count">{filteredPendingTransactions.length}/{pendingTransactions.length}</span>
+                    <button className="filter-toggle" type="button" onClick={() => setShowTransactionFilters((visible) => !visible)} aria-expanded={showTransactionFilters}>
+                      {showTransactionFilters ? 'Hide filters' : 'Filters'}
+                    </button>
+                  </div>
                 </div>
-                {!pendingTransactions.length && <p className="empty-state">No pending transactions yet.</p>}
+                <div className="transaction-filters transaction-search">
+                  <input className="panel-search" value={transactionSearch} onChange={(event) => setTransactionSearch(event.target.value)} placeholder="Search people or descriptions..." aria-label="Search pending transactions" />
+                  {showTransactionFilters && (
+                    <>
+                      <select value={transactionPerson} onChange={(event) => setTransactionPerson(event.target.value)} aria-label="Filter by person">
+                        <option value="">Everyone</option>
+                        {groupMembers.map((member) => <option value={member.id} key={member.id}>{member.name}</option>)}
+                      </select>
+                      <div className="amount-filters">
+                        <input type="number" min="0" value={minimumAmount} onChange={(event) => setMinimumAmount(event.target.value)} placeholder="Min amount" aria-label="Minimum amount" />
+                        <input type="number" min="0" value={maximumAmount} onChange={(event) => setMaximumAmount(event.target.value)} placeholder="Max amount" aria-label="Maximum amount" />
+                      </div>
+                      <select value={transactionSort} onChange={(event) => setTransactionSort(event.target.value)} aria-label="Sort pending transactions">
+                        <option value="newest">Newest first</option>
+                        <option value="oldest">Oldest first</option>
+                        <option value="amount-high">Highest amount</option>
+                        <option value="amount-low">Lowest amount</option>
+                      </select>
+                    </>
+                  )}
+                </div>
+                {!filteredPendingTransactions.length && <p className="empty-state">{pendingTransactions.length ? 'No matching pending transactions.' : 'No pending transactions yet.'}</p>}
                 <div className="transaction-list">
-                  {pendingTransactions.map((pendingTransaction) => {
-                    const payer = members.map((membership) => membership.user || membership).find((member) => member.id === pendingTransaction.fromId)
-                    const recipient = members.map((membership) => membership.user || membership).find((member) => member.id === pendingTransaction.toId)
+                  {filteredPendingTransactions.map((pendingTransaction) => {
+                    const payer = groupMembers.find((member) => member.id === pendingTransaction.fromId)
+                    const recipient = groupMembers.find((member) => member.id === pendingTransaction.toId)
                     return (
                       <div className="transaction-row" key={pendingTransaction.id}>
                         <span className="transaction-dot" />
-                        <span><strong>{payer?.name || 'Member'} owes {recipient?.name || 'member'}</strong><small>{pendingTransaction.description || 'No description'} · Pending</small></span>
+                        <span><strong>{payer?.name || 'Member'} owes {recipient?.name || 'member'}</strong><small>{pendingTransaction.description || 'No description'} · Pending · {formatPendingTransactionTime(pendingTransaction.createdAt)}</small></span>
                         <b>{pendingTransaction.amount}</b>
                       </div>
                     )
