@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../AuthProvider.jsx'
 import apiClient from '../apiClient.js'
@@ -41,42 +41,37 @@ export default function Group() {
   const [transactionSort, setTransactionSort] = useState('newest')
   const [showTransactionFilters, setShowTransactionFilters] = useState(false)
 
-  const groupMembers = useMemo(
-    () => members.map((membership) => membership.user || membership),
-    [members],
-  )
-  const filteredMembers = useMemo(() => {
-    const search = memberSearch.trim().toLowerCase()
-    return members.filter((membership) => {
-      const member = membership.user || membership
-      return !search || member.name?.toLowerCase().includes(search)
+  const groupMembers = members.map((membership) => membership.user || membership)
+  const memberSearchText = memberSearch.trim().toLowerCase()
+  const filteredMembers = members.filter((membership) => {
+    const member = membership.user || membership
+    return !memberSearchText || member.name?.toLowerCase().includes(memberSearchText)
+  })
+  const transactionSearchText = transactionSearch.trim().toLowerCase()
+  const minimum = minimumAmount === '' ? null : Number(minimumAmount)
+  const maximum = maximumAmount === '' ? null : Number(maximumAmount)
+  const filteredPendingTransactions = [...pendingTransactions]
+    .filter((pendingTransaction) => {
+      const payer = groupMembers.find((member) => member.id === pendingTransaction.fromId)
+      const recipient = groupMembers.find((member) => member.id === pendingTransaction.toId)
+      const people = `${payer?.name || ''} ${recipient?.name || ''}`.toLowerCase()
+      const searchableText = `${people} ${pendingTransaction.description ||
+         ''}`.toLowerCase()
+      const matchesAmount = (minimum === null || pendingTransaction.amount >= minimum)
+        && (maximum === null || pendingTransaction.amount <= maximum)
+      const matchesPerson = !transactionPerson
+        || pendingTransaction.fromId === transactionPerson
+        || pendingTransaction.toId === transactionPerson
+      return (!transactionSearchText || searchableText.includes(transactionSearchText)) && matchesAmount && matchesPerson
     })
-  }, [memberSearch, members])
-  const filteredPendingTransactions = useMemo(() => {
-    const search = transactionSearch.trim().toLowerCase()
-    const minimum = minimumAmount === '' ? null : Number(minimumAmount)
-    const maximum = maximumAmount === '' ? null : Number(maximumAmount)
-    return pendingTransactions
-      .filter((pendingTransaction) => {
-        const payer = groupMembers.find((member) => member.id === pendingTransaction.fromId)
-        const recipient = groupMembers.find((member) => member.id === pendingTransaction.toId)
-        const people = `${payer?.name || ''} ${recipient?.name || ''}`.toLowerCase()
-        const searchableText = `${people} ${pendingTransaction.description || ''}`.toLowerCase()
-        const matchesAmount = (minimum === null || pendingTransaction.amount >= minimum)
-          && (maximum === null || pendingTransaction.amount <= maximum)
-        const matchesPerson = !transactionPerson
-          || pendingTransaction.fromId === transactionPerson
-          || pendingTransaction.toId === transactionPerson
-        return (!search || searchableText.includes(search)) && matchesAmount && matchesPerson
-      })
-      .sort((first, second) => {
-        if (transactionSort === 'amount-high') return second.amount - first.amount
-        if (transactionSort === 'amount-low') return first.amount - second.amount
-        const firstTime = new Date(first.createdAt).getTime()
-        const secondTime = new Date(second.createdAt).getTime()
-        return transactionSort === 'oldest' ? firstTime - secondTime : secondTime - firstTime
-      })
-  }, [groupMembers, maximumAmount, minimumAmount, pendingTransactions, transactionPerson, transactionSearch, transactionSort])
+    .sort((first, second) => {
+      if (transactionSort === 'amount-high') return second.amount - first.amount
+      if (transactionSort === 'amount-low') return first.amount - second.amount
+      const firstTime = new Date(first.createdAt).getTime()
+      const secondTime = new Date(second.createdAt).getTime()
+      return transactionSort === 'oldest' ? firstTime - secondTime : secondTime - firstTime
+    })
+
 
   async function copyGroupId() {
     try {
