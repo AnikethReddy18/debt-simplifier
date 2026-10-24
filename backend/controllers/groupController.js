@@ -34,11 +34,12 @@ export async function createGroupController(req, res) {
 }
 
 export async function addMemberToGroup(req, res) {
-  const { groupId, userId } = req.body;
+  const groupId = req.params.id;
+  const { userId } = req.body;
 
-  if (!groupId || !userId) {
+  if (!userId) {
     return res.status(400).json({
-      error: "groupId and userId are required",
+      error: "userId is required",
     });
   }
 
