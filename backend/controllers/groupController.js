@@ -2,12 +2,38 @@ import {
   addUserToGroup,
   createGroup,
   deleteGroup,
-  createTransaction,
+  createPendingTransaction,
   getGroupById,
   getMembership,
   listGroupMembers,
-  listGroupTransactions,
+  listGroupPendingTransactions,
+  listUserGroups,
 } from "../queries.js";
+
+function publicGroup(group) {
+  return { id: group.id, name: group.name };
+}
+
+export async function listMyGroups(req, res) {
+  try {
+    const memberships = await listUserGroups(req.user.sub);
+    return res.json(memberships.map(({ group }) => publicGroup(group)));
+  } catch (error) {
+    console.error("Unable to fetch user groups:", error);
+    return res.status(500).json({ error: "Unable to fetch groups" });
+  }
+}
+
+export async function getGroup(req, res) {
+  try {
+    const group = await getGroupById(req.params.id);
+    if (!group) return res.status(404).json({ error: "Group not found" });
+    return res.json(publicGroup(group));
+  } catch (error) {
+    console.error("Unable to fetch group:", error);
+    return res.status(500).json({ error: "Unable to fetch group" });
+  }
+}
 
 export async function createGroupController(req, res) {
   const { name } = req.body;
@@ -37,13 +63,7 @@ export async function createGroupController(req, res) {
 
 export async function addMemberToGroup(req, res) {
   const groupId = req.params.id;
-  const { userId } = req.body;
-
-  if (!userId) {
-    return res.status(400).json({
-      error: "userId is required",
-    });
-  }
+  const userId = req.user?.sub;
 
   try {
     const group = await getGroupById(groupId);
@@ -56,8 +76,8 @@ export async function addMemberToGroup(req, res) {
       return res.status(409).json({ error: "User is already in this group" });
     }
 
-    const createdMembership = await addUserToGroup(userId, groupId);
-    return res.status(201).json(createdMembership);
+    await addUserToGroup(userId, groupId);
+    return res.status(201).json({ group: publicGroup(group) });
   } catch (error) {
     console.error("Unable to add user to group:", error);
     return res.status(500).json({ error: "Unable to add user to group" });
@@ -78,19 +98,19 @@ export async function removeGroup(req, res) {
   }
 }
 
-export async function getGroupTransactions(req, res) {
+export async function getGroupPendingTransactions(req, res) {
   try {
     const group = await getGroupById(req.params.id);
     if (!group) {
       return res.status(404).json({ error: "Group not found" });
     }
 
-    const transactions = await listGroupTransactions(req.params.id);
-    return res.json(transactions);
+    const pendingTransactions = await listGroupPendingTransactions(req.params.id);
+    return res.json(pendingTransactions);
   } catch (error) {
-    console.error("Unable to fetch group transactions:", error);
+    console.error("Unable to fetch group pending transactions:", error);
     return res.status(500).json({
-      error: "Unable to fetch group transactions",
+      error: "Unable to fetch pending transactions",
     });
   }
 }
@@ -112,7 +132,7 @@ export async function getGroupMembers(req, res) {
   }
 }
 
-export async function addGroupTransaction(req, res) {
+export async function addPendingTransaction(req, res) {
   const groupId = req.params.id;
   const { amount, description, toId } = req.body ?? {};
   const requesterId = req.user?.sub;
@@ -161,7 +181,7 @@ export async function addGroupTransaction(req, res) {
       });
     }
 
-    const transaction = await createTransaction({
+    const pendingTransaction = await createPendingTransaction({
       amount,
       description: description?.trim() || null,
       groupId,
@@ -169,11 +189,11 @@ export async function addGroupTransaction(req, res) {
       toId,
     });
 
-    return res.status(201).json(transaction);
+    return res.status(201).json(pendingTransaction);
   } catch (error) {
-    console.error("Unable to add group transaction:", error);
+    console.error("Unable to add pending transaction:", error);
     return res.status(500).json({
-      error: "Unable to add group transaction",
+      error: "Unable to add pending transaction",
     });
   }
 }
@@ -183,6 +203,6 @@ export default {
   addMemberToGroup,
   removeGroup,
   getGroupMembers,
-  addGroupTransaction,
-  getGroupTransactions,
+  addPendingTransaction,
+  getGroupPendingTransactions,
 };

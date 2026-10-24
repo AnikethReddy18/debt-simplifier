@@ -82,8 +82,8 @@ export function removeAllMembersFromGroup(groupId) {
   return GroupMember.where({ groupId }).deleteAll();
 }
 
-// Transactions (debts)
-export function createTransaction({
+// Pending transactions
+export function createPendingTransaction({
   amount,
   description = null,
   groupId,
@@ -103,32 +103,18 @@ export function createTransaction({
   });
 }
 
-export function getTransactionById(id) {
+export function getPendingTransactionById(id) {
   return Transaction.where({ id }).first();
 }
 
-export function listGroupTransactions(groupId) {
+export function listGroupPendingTransactions(groupId) {
   return Transaction
     .where({ groupId })
     .orderBy((transaction) => transaction.createdAt.desc())
     .all();
 }
 
-export function listDebtsOwedByUser(fromId) {
-  return Transaction
-    .where({ fromId })
-    .orderBy((transaction) => transaction.createdAt.desc())
-    .all();
-}
-
-export function listDebtsToCollectByUser(toId) {
-  return Transaction
-    .where({ toId })
-    .orderBy((transaction) => transaction.createdAt.desc())
-    .all();
-}
-
-export function updateTransaction(id, changes) {
+export function updatePendingTransaction(id, changes) {
   if (changes.amount !== undefined &&
       (!Number.isInteger(changes.amount) || changes.amount <= 0)) {
     throw new TypeError("amount must be a positive integer");
@@ -137,7 +123,6 @@ export function updateTransaction(id, changes) {
   return Transaction.where({ id }).update(changes);
 }
 
-export function deleteTransaction(id) {
+export function deletePendingTransaction(id) {
   return Transaction.where({ id }).delete();
 }
-
