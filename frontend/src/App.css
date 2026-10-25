@@ -59,6 +59,7 @@ form label { display: flex; flex-direction: column; color: #48564d; font-size: 1
 .group-columns > .panel .panel-heading { flex-shrink: 0; }
 .group-columns > .panel .member-list, .group-columns > .panel .transaction-list { flex: 1; min-height: 0; overflow-y: auto; padding-right: 6px; }
 .group-columns > .panel .empty-state { flex-shrink: 0; }
+.simplify-button { margin: 0 0 18px; }
 .panel-search, .transaction-filters select, .amount-filters input { width: 100%; border: 1px solid #d9dfd7; border-radius: 7px; padding: 9px 10px; outline: none; background: #fff; color: #172820; font-size: 11px; }
 .panel-search { flex-shrink: 0; margin-bottom: 8px; }
 .panel-search:focus, .transaction-filters select:focus, .amount-filters input:focus { border-color: #96c34c; box-shadow: 0 0 0 3px rgba(150,195,76,.12); }
@@ -71,7 +72,7 @@ form label { display: flex; flex-direction: column; color: #48564d; font-size: 1
 .member-row > span:nth-child(2) { flex: 1; }
 .pending-transaction-button { border: 1px solid #d9dfd7; border-radius: 6px; padding: 6px 9px; color: #638d25; background: #fff; font-size: 11px; font-weight: 700; white-space: nowrap; }
 .pending-transaction-button:hover { border-color: #96c34c; background: #f7fbf1; }
-.transaction-list { display: grid; gap: 5px; }
+.transaction-list { display: grid; align-content: start; gap: 5px; }
 .transaction-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-top: 1px solid #eef0ed; }
 .transaction-row > span:nth-child(2) { flex: 1; min-width: 0; }
 .transaction-row strong, .transaction-row small { display: block; }

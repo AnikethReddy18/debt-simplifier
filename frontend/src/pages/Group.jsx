@@ -32,6 +32,7 @@ export default function Group() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [simplifying, setSimplifying] = useState(false)
   const [copied, setCopied] = useState(false)
   const [memberSearch, setMemberSearch] = useState('')
   const [transactionSearch, setTransactionSearch] = useState('')
@@ -55,8 +56,7 @@ export default function Group() {
       const payer = groupMembers.find((member) => member.id === pendingTransaction.fromId)
       const recipient = groupMembers.find((member) => member.id === pendingTransaction.toId)
       const people = `${payer?.name || ''} ${recipient?.name || ''}`.toLowerCase()
-      const searchableText = `${people} ${pendingTransaction.description ||
-         ''}`.toLowerCase()
+      const searchableText = `${people} ${pendingTransaction.description || ''}`.toLowerCase()
       const matchesAmount = (minimum === null || pendingTransaction.amount >= minimum)
         && (maximum === null || pendingTransaction.amount <= maximum)
       const matchesPerson = !transactionPerson
@@ -129,6 +129,19 @@ export default function Group() {
     }
   }
 
+  async function simplifyPendingTransactions() {
+    setSimplifying(true)
+    setError('')
+    try {
+      const response = await apiClient.post(`/groups/${groupId}/simplify-pending-transactions`)
+      setPendingTransactions(response.data)
+    } catch (simplifyError) {
+      setError(simplifyError.response?.data?.error || 'Unable to simplify pending transactions.')
+    } finally {
+      setSimplifying(false)
+    }
+  }
+
   return (
     <main className="app-shell">
       <header className="app-header">
@@ -147,6 +160,7 @@ export default function Group() {
               <strong>{group.id}</strong>
               <button className="copy-button" type="button" onClick={copyGroupId}>{copied ? 'Copied' : 'Copy'}</button>
             </div>
+            {!!pendingTransactions.length && <button className="primary-button simplify-button" type="button" onClick={simplifyPendingTransactions} disabled={simplifying}>{simplifying ? 'Simplifying...' : 'Simplify transactions'} <span>→</span></button>}
             <div className="group-columns">
               <section className="panel members-panel">
                 <div className="panel-heading">
