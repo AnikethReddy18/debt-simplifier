@@ -1,14 +1,16 @@
 import {
   addUserToGroup,
   createGroup,
-  deleteGroup,
   createPendingTransaction,
+  deleteGroup,
+  deleteGroupPendingTransactions,
   getGroupById,
   getMembership,
   listGroupMembers,
   listGroupPendingTransactions,
   listUserGroups,
 } from "../queries.js";
+import { simplifyPendingTransactions } from "../simplifyPendingTransactions.js";
 
 function publicGroup(group) {
   return { id: group.id, name: group.name };
@@ -115,6 +117,45 @@ export async function getGroupPendingTransactions(req, res) {
   }
 }
 
+export async function simplifyGroupPendingTransactions(req, res) {
+  const groupId = req.params.id;
+  const userId = req.user?.sub;
+
+  try {
+    const group = await getGroupById(groupId);
+    if (!group) {
+      return res.status(404).json({ error: "Group not found" });
+    }
+
+    if (!userId || !(await getMembership(userId, groupId))) {
+      return res.status(403).json({
+        error: "You must be a member of the group",
+      });
+    }
+
+    const pendingTransactions = await listGroupPendingTransactions(groupId);
+    const simplifiedPendingTransactions = simplifyPendingTransactions(pendingTransactions);
+
+    await deleteGroupPendingTransactions(groupId);
+
+    const createdTransactions = [];
+    for (const pendingTransaction of simplifiedPendingTransactions) {
+      createdTransactions.push(await createPendingTransaction({
+        ...pendingTransaction,
+        description: "simplified",
+        groupId,
+      }));
+    }
+
+    return res.json(createdTransactions);
+  } catch (error) {
+    console.error("Unable to simplify group pending transactions:", error);
+    return res.status(500).json({
+      error: "Unable to simplify group pending transactions",
+    });
+  }
+}
+
 export async function getGroupMembers(req, res) {
   try {
     const group = await getGroupById(req.params.id);
@@ -163,7 +204,7 @@ export async function addPendingTransaction(req, res) {
       return res.status(404).json({ error: "Group not found" });
     }
 
-    const [recipientMembership, debtorMembership] = await Promise.all([
+    const [recipientMembership, payerMembership] = await Promise.all([
       getMembership(recipientId, groupId),
       getMembership(fromId, groupId),
     ]);
@@ -174,7 +215,7 @@ export async function addPendingTransaction(req, res) {
       });
     }
 
-    if (!debtorMembership) {
+    if (!payerMembership) {
       return res.status(403).json({
         error: "The other person must be a member of the group",
       });
@@ -204,4 +245,5 @@ export default {
   getGroupMembers,
   addPendingTransaction,
   getGroupPendingTransactions,
+  simplifyGroupPendingTransactions,
 };

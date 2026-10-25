@@ -114,6 +114,10 @@ export function listGroupPendingTransactions(groupId) {
     .all();
 }
 
+export function deleteGroupPendingTransactions(groupId) {
+  return Transaction.where({ groupId }).deleteAll();
+}
+
 export function updatePendingTransaction(id, changes) {
   if (changes.amount !== undefined &&
       (!Number.isInteger(changes.amount) || changes.amount <= 0)) {

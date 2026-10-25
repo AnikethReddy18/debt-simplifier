@@ -7,6 +7,7 @@ import {
   getGroup,
   listMyGroups,
   getGroupPendingTransactions,
+  simplifyGroupPendingTransactions,
   removeGroup,
 } from "../controllers/groupController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
@@ -22,5 +23,6 @@ groupRouter.post("/:id/pending-transactions", addPendingTransaction);
 groupRouter.get("/:id/members", getGroupMembers);
 groupRouter.delete("/:id", removeGroup);
 groupRouter.get("/:id/pending-transactions", getGroupPendingTransactions);
+groupRouter.post("/:id/simplify-pending-transactions", simplifyGroupPendingTransactions);
 
 export default groupRouter;
