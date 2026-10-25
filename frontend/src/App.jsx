@@ -13,6 +13,8 @@ function App() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [netBalance, setNetBalance] = useState(null)
+  const [calculatingNet, setCalculatingNet] = useState(false)
 
   useEffect(() => {
     async function loadGroups() {
@@ -47,6 +49,7 @@ function App() {
     try {
       const response = await apiClient.post('/groups', { name: groupName.trim() })
       setGroups((currentGroups) => [...currentGroups, response.data])
+      setNetBalance(null)
       closeForm()
     } catch (submitError) {
       setError(submitError.response?.data?.error || 'Unable to create the group.')
@@ -62,12 +65,42 @@ function App() {
     try {
       const response = await apiClient.post(`/groups/${groupId.trim()}/members`)
       setGroups((currentGroups) => [...currentGroups, response.data.group])
+      setNetBalance(null)
       closeForm()
     } catch (submitError) {
       setError(submitError.response?.data?.error || 'Unable to join the group.')
     } finally {
       setSubmitting(false)
     }
+  }
+
+  async function calculateNetBalance() {
+    setCalculatingNet(true)
+    setError('')
+    try {
+      const responses = await Promise.all(
+        groups.map((group) => apiClient.get(`/groups/${group.id}/pending-transactions`)),
+      )
+      const balance = responses
+        .flatMap((response) => response.data)
+        .reduce((total, transaction) => {
+          const amount = Number(transaction.amount)
+          if (transaction.toId === user?.id) return total + amount
+          if (transaction.fromId === user?.id) return total - amount
+          return total
+        }, 0)
+      setNetBalance(balance)
+    } catch (netError) {
+      setError(netError.response?.data?.error || 'Unable to calculate your net balance.')
+      setNetBalance(null)
+    } finally {
+      setCalculatingNet(false)
+    }
+  }
+
+  function formatNetBalance(balance) {
+    if (balance === 0) return '0'
+    return `${balance > 0 ? '+' : '-'}${Math.abs(balance).toLocaleString()}`
   }
 
   return (
@@ -89,10 +122,20 @@ function App() {
             <p>Keep your shared expenses simple and organized.</p>
           </div>
           <div className="dashboard-actions">
+            <button className="secondary-button compact" type="button" onClick={calculateNetBalance} disabled={calculatingNet}>
+              {calculatingNet ? 'Calculating...' : 'Get net'}
+            </button>
             <button className="primary-button compact" type="button" onClick={() => openForm('create')}>+ Create group</button>
             <button className="secondary-button compact" type="button" onClick={() => openForm('join')}>Join a group</button>
           </div>
         </div>
+        {netBalance !== null && (
+          <section className="net-balance" aria-live="polite">
+            <span>Your net across all groups</span>
+            <strong className={netBalance >= 0 ? 'positive' : 'negative'}>{formatNetBalance(netBalance)}</strong>
+            <small>{netBalance > 0 ? 'You are owed' : netBalance < 0 ? 'You owe' : 'You are settled up'}</small>
+          </section>
+        )}
 
         <section className="panel groups-panel">
           <div className="panel-heading">
