@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useAuth } from '../AuthProvider.jsx'
 import apiClient from '../apiClient.js'
 import '../App.css'
 
@@ -22,13 +21,14 @@ function formatPendingTransactionTime(createdAt) {
 
 export default function Group() {
   const { groupId } = useParams()
-  const { user } = useAuth()
   const [group, setGroup] = useState(null)
   const [members, setMembers] = useState([])
   const [pendingTransactions, setPendingTransactions] = useState([])
-  const [selectedMember, setSelectedMember] = useState(null)
+  const [selectedMemberIds, setSelectedMemberIds] = useState([])
+  const [showPendingTransactionForm, setShowPendingTransactionForm] = useState(false)
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
+  const [amountPerPerson, setAmountPerPerson] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -104,10 +104,23 @@ export default function Group() {
   }, [groupId])
 
   function closePendingTransactionForm() {
-    setSelectedMember(null)
+    setSelectedMemberIds([])
+    setShowPendingTransactionForm(false)
     setAmount('')
     setDescription('')
+    setAmountPerPerson(false)
     setError('')
+  }
+
+  function toggleMemberSelection(memberId) {
+    setSelectedMemberIds((currentIds) => currentIds.includes(memberId)
+      ? currentIds.filter((id) => id !== memberId)
+      : [...currentIds, memberId])
+  }
+
+  function toggleSelectAllMembers() {
+    const allMemberIds = groupMembers.map((member) => member.id)
+    setSelectedMemberIds((currentIds) => currentIds.length === allMemberIds.length ? [] : allMemberIds)
   }
 
   async function addPendingTransaction(event) {
@@ -115,12 +128,33 @@ export default function Group() {
     setSubmitting(true)
     setError('')
     try {
-      const response = await apiClient.post(`/groups/${groupId}/pending-transactions`, {
-        amount: Number(amount),
+      const totalAmount = Number(amount)
+      const transactionAmount = amountPerPerson ? totalAmount : totalAmount / selectedMemberIds.length
+      if (!Number.isInteger(transactionAmount) || transactionAmount <= 0) {
+        setError(amountPerPerson
+          ? 'Amount must be a positive whole number.'
+          : 'Total amount must divide evenly among the selected people.')
+        return
+      }
+
+      const results = await Promise.allSettled(selectedMemberIds.map((memberId) => apiClient.post(`/groups/${groupId}/pending-transactions`, {
+        amount: transactionAmount,
         description: description.trim(),
-        fromId: selectedMember.id,
-      })
-      setPendingTransactions((currentPendingTransactions) => [response.data, ...currentPendingTransactions])
+        fromId: memberId,
+      })))
+      const successfulTransactions = results
+        .filter((result) => result.status === 'fulfilled')
+        .map((result) => result.value.data)
+      const failedRequest = results.find((result) => result.status === 'rejected')
+
+      if (successfulTransactions.length) {
+        setPendingTransactions((currentPendingTransactions) => [...successfulTransactions, ...currentPendingTransactions])
+      }
+      if (failedRequest) {
+        setError(failedRequest.reason.response?.data?.error || 'Some pending transactions could not be added.')
+        return
+      }
+
       closePendingTransactionForm()
     } catch (submitError) {
       setError(submitError.response?.data?.error || 'Unable to add this pending transaction.')
@@ -150,7 +184,7 @@ export default function Group() {
       </header>
       <section className="dashboard group-page">
         {loading && <p className="empty-state">Loading group...</p>}
-        {error && !selectedMember && <p className="bento-error" role="alert">{error}</p>}
+        {error && !selectedMemberIds.length && <p className="bento-error" role="alert">{error}</p>}
         {!loading && !error && group && (
           <>
             <p className="eyebrow">Group details</p>
@@ -168,20 +202,36 @@ export default function Group() {
                   <span className="group-count">{filteredMembers.length}/{members.length}</span>
                 </div>
                 <input className="panel-search" value={memberSearch} onChange={(event) => setMemberSearch(event.target.value)} placeholder="Search members..." aria-label="Search members" />
+                <div className="member-selection-actions">
+                  <button className="filter-toggle" type="button" onClick={toggleSelectAllMembers}>
+                    {selectedMemberIds.length === groupMembers.length ? 'Clear all' : 'Select all'}
+                  </button>
+                  <span>{selectedMemberIds.length} selected</span>
+                  <button className="pending-transaction-button" type="button" onClick={() => setShowPendingTransactionForm(true)} disabled={!selectedMemberIds.length}>
+                    Add pending transaction
+                  </button>
+                </div>
                 {!filteredMembers.length && <p className="empty-state">{members.length ? 'No matching members.' : 'No members found.'}</p>}
                 <div className="member-list">
                   {filteredMembers.map((membership) => {
                     const member = membership.user || membership
-                    const isCurrentUser = member.id === user?.id || membership.userId === user?.id
                     return (
                       <div className="member-row" key={membership.userId || member.id}>
+                        <input
+                          type="checkbox"
+                          checked={selectedMemberIds.includes(member.id)}
+                          onChange={() => toggleMemberSelection(member.id)}
+                          aria-label={`Select ${member.name || 'member'}`}
+                        />
                         <span className="avatar">{(member.name || 'U').charAt(0).toUpperCase()}</span>
                         <span><strong>{member.name || 'Unknown member'}</strong></span>
-                        {!isCurrentUser && <button className="pending-transaction-button" type="button" onClick={() => setSelectedMember(member)}>Add pending transaction</button>}
                       </div>
                     )
                   })}
                 </div>
+                <button className="primary-button members-add-button" type="button" onClick={() => setShowPendingTransactionForm(true)} disabled={!selectedMemberIds.length}>
+                  Add for selected people
+                </button>
               </section>
               <section className="panel transactions-panel">
                 <div className="panel-heading">
@@ -233,15 +283,19 @@ export default function Group() {
           </>
         )}
       </section>
-      {selectedMember && (
+      {showPendingTransactionForm && !!selectedMemberIds.length && (
         <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && closePendingTransactionForm()}>
           <section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="pending-transaction-form-title">
             <button className="modal-close" type="button" onClick={closePendingTransactionForm} aria-label="Close">×</button>
             <p className="eyebrow">Add pending transaction</p>
-            <h2 id="pending-transaction-form-title">{selectedMember.name} owes you</h2>
-            <p className="modal-subtitle">Enter the amount and what the payment is for.</p>
+            <h2 id="pending-transaction-form-title">{selectedMemberIds.length} people selected</h2>
+            <p className="modal-subtitle">Split the total equally, or apply the amount to each person.</p>
             <form className="group-form" onSubmit={addPendingTransaction}>
-              <label>Amount<input type="number" min="1" step="1" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0" required /></label>
+              <label>Total amount<input type="number" min="1" step="1" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0" required /></label>
+              <label className="transaction-toggle">
+                <span>Use amount for each person</span>
+                <input type="checkbox" checked={amountPerPerson} onChange={(event) => setAmountPerPerson(event.target.checked)} />
+              </label>
               <label>Description<input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Dinner, tickets, groceries..." required /></label>
               {error && <p className="bento-error" role="alert">{error}</p>}
               <button className="primary-button" type="submit" disabled={submitting}>{submitting ? 'Adding...' : 'Add pending transaction'} <span>→</span></button>

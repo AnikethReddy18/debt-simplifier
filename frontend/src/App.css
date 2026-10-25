@@ -57,6 +57,7 @@ form label { display: flex; flex-direction: column; color: #48564d; font-size: 1
 .members-panel { max-width: none; }
 .member-list { display: grid; gap: 5px; }
 .member-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid #eef0ed; }
+.member-row > input { accent-color: #7da832; }
 .member-row > span:last-child { min-width: 0; }
 .member-row strong, .member-row small { display: block; }
 .member-row small { color: #929b94; font-size: 11px; margin-top: 4px; }
@@ -78,6 +79,12 @@ form label { display: flex; flex-direction: column; color: #48564d; font-size: 1
 .member-row > span:nth-child(2) { flex: 1; }
 .pending-transaction-button { border: 1px solid #d9dfd7; border-radius: 6px; padding: 6px 9px; color: #638d25; background: #fff; font-size: 11px; font-weight: 700; white-space: nowrap; }
 .pending-transaction-button:hover { border-color: #96c34c; background: #f7fbf1; }
+.pending-transaction-button:disabled, .primary-button:disabled { cursor: not-allowed; opacity: .55; transform: none; }
+.member-selection-actions { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+.member-selection-actions > span { flex: 1; color: #849087; font-size: 11px; }
+.members-add-button { flex-shrink: 0; margin-top: 10px; padding: 10px 14px; }
+.transaction-toggle { flex-direction: row; align-items: center; justify-content: space-between; }
+.transaction-toggle input { accent-color: #7da832; }
 .transaction-list { display: grid; align-content: start; gap: 5px; }
 .transaction-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-top: 1px solid #eef0ed; }
 .transaction-row > span:nth-child(2) { flex: 1; min-width: 0; }
