@@ -35,8 +35,8 @@ At the heart of the application is a graph-based Minimum Cash Flow algorithm. If
    ```
 3. Initialize the database via Prisma (ensure your database URL is set in a `.env` file):
    ```bash
-   npx prisma generate
-   npx prisma db push
+   npx prisma contract emit
+   npx prisma db init
    ```
 4. Start the backend server:
    ```bash
