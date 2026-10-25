@@ -224,7 +224,7 @@ export default function Group() {
                           aria-label={`Select ${member.name || 'member'}`}
                         />
                         <span className="avatar">{(member.name || 'U').charAt(0).toUpperCase()}</span>
-                        <span><strong>{member.name || 'Unknown member'}</strong></span>
+                        <span className="member-name"><strong>{member.name || 'Unknown member'}</strong></span>
                       </div>
                     )
                   })}
